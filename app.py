@@ -9,13 +9,6 @@ st.set_page_config(page_title="AI CV & Job Matcher", page_icon="📄", layout="w
 st.title("📄 AI CV & Job Description Matcher")
 st.write("Upload a candidate's CV and a Job Description to get an instant match score and detailed HR analysis.")
 
-# Sidebar for API Key input or fallback to environment variable
-with st.sidebar:
-    st.header("Settings")
-    api_key_input = st.text_input("Gemini API Key", type="password", help="Leave blank if GEMINI_API_KEY is set in environment")
-    
-    # Initialize API key
-    api_key = api_key_input or os.environ.get("GEMINI_API_KEY")
 
 # Upload UI columns
 col1, col2 = st.columns(2)
