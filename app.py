@@ -3,80 +3,99 @@ import streamlit as st
 from google import genai
 from google.genai import types
 
-# Set page title and layout
+# Set page layout
 st.set_page_config(page_title="AI CV & Job Matcher", page_icon="📄", layout="wide")
 
-st.title("📄 AI CV & Job Description Matcher")
-st.write("Upload a candidate's CV and a Job Description to get an instant match score and detailed HR analysis.")
+# Check if user is logged in
+if not st.experimental_user.is_logged_in if hasattr(st, "experimental_user") else False:
+    # Streamlit OIDC Authentication check
+    pass
 
+# Display Auth Status / Login UI
+if not st.user.is_logged_in:
+    st.title("🔒 Welcome to AI CV Matcher")
+    st.write("Please sign in with your Google Account to access the application.")
+    
+    if st.button("Log in with Google", type="primary"):
+        st.login("google")
+else:
+    # Header & User Info Banner
+    col_title, col_user = st.columns([3, 1])
+    with col_title:
+        st.title("📄 AI CV & Job Description Matcher")
+    with col_user:
+        st.write(f"Logged in as **{st.user.name}**")
+        st.caption(f"({st.user.email})")
+        if st.button("Log out"):
+            st.logout()
 
-# Upload UI columns
-col1, col2 = st.columns(2)
+    st.write("Upload a candidate's CV and a Job Description to get an instant match score and detailed HR analysis.")
+    st.markdown("---")
 
-with col1:
-    st.subheader("1. Candidate CV")
-    cv_file = st.file_uploader("Upload CV (PDF or TXT)", type=["pdf", "txt"], key="cv")
+    # Retrieve API Key from Secrets or Environment Variables
+    api_key = st.secrets.get("GEMINI_API_KEY") or os.environ.get("GEMINI_API_KEY")
 
-with col2:
-    st.subheader("2. Job Description")
-    jd_file = st.file_uploader("Upload Job Description (PDF or TXT)", type=["pdf", "txt"], key="jd")
+    # Upload UI columns
+    col1, col2 = st.columns(2)
 
-# Action Button
-if st.button("Evaluate Match", type="primary", use_container_width=True):
-    if not api_key:
-        st.error("Please enter your Gemini API Key in the sidebar or set the GEMINI_API_KEY environment variable.")
-    elif not cv_file or not jd_file:
-        st.warning("Please upload both a CV and a Job Description before running the evaluation.")
-    else:
-        try:
-            with st.spinner("Analyzing document compatibility with Gemini..."):
-                # Initialize GenAI Client
-                client = genai.Client(api_key=api_key)
+    with col1:
+        st.subheader("1. Candidate CV")
+        cv_file = st.file_uploader("Upload CV (PDF or TXT)", type=["pdf", "txt"], key="cv")
 
-                # Convert uploaded files in-memory to Parts
-                cv_part = types.Part.from_bytes(
-                    data=cv_file.getvalue(),
-                    mime_type=cv_file.type
-                )
-                
-                jd_part = types.Part.from_bytes(
-                    data=jd_file.getvalue(),
-                    mime_type=jd_file.type
-                )
+    with col2:
+        st.subheader("2. Job Description")
+        jd_file = st.file_uploader("Upload Job Description (PDF or TXT)", type=["pdf", "txt"], key="jd")
 
-                # Structured Evaluation Prompt
-                prompt = """
-                You are an expert ATS (Applicant Tracking System) reviewer and technical hiring manager.
-                Compare the attached candidate CV against the attached Job Description.
+    # Action Button
+    if st.button("Evaluate Match", type="primary", use_container_width=True):
+        if not api_key:
+            st.error("API Key missing! Make sure GEMINI_API_KEY is configured in Streamlit Secrets.")
+        elif not cv_file or not jd_file:
+            st.warning("Please upload both a CV and a Job Description before running the evaluation.")
+        else:
+            try:
+                with st.spinner("Analyzing document compatibility with Gemini..."):
+                    client = genai.Client(api_key=api_key)
 
-                Provide your analysis strictly structured as follows:
+                    cv_part = types.Part.from_bytes(
+                        data=cv_file.getvalue(),
+                        mime_type=cv_file.type
+                    )
+                    
+                    jd_part = types.Part.from_bytes(
+                        data=jd_file.getvalue(),
+                        mime_type=jd_file.type
+                    )
 
-                ## 🎯 MATCHING SCORE: [Score out of 100]%
+                    prompt = """
+                    You are an expert ATS (Applicant Tracking System) reviewer and technical hiring manager.
+                    Compare the attached candidate CV against the attached Job Description.
 
-                ### 📝 Executive Summary
-                [2-3 sentences summarizing overall candidate fit]
+                    Provide your analysis strictly structured as follows:
 
-                ### ✅ Key Matches & Strengths
-                [Bullet points of matching skills, tools, and experiences]
+                    ## 🎯 MATCHING SCORE: [Score out of 100]%
 
-                ### ⚠️ Gaps & Missing Requisites
-                [Bullet points of key qualifications or skills required in the job description that are missing from the CV]
+                    ### 📝 Executive Summary
+                    [2-3 sentences summarizing overall candidate fit]
 
-                ### 💡 Recommendations
-                [Specific advice for the hiring manager or candidate]
-                """
+                    ### ✅ Key Matches & Strengths
+                    [Bullet points of matching skills, tools, and experiences]
 
-                # Query Gemini Model
-                response = client.models.generate_content(
-                    model="gemini-3.6-flash",
-                    contents=[cv_part, jd_part, prompt]
-                )
+                    ### ⚠️ Gaps & Missing Requisites
+                    [Bullet points of key qualifications missing from the CV]
 
-                st.success("Evaluation Complete!")
-                st.markdown("---")
-                
-                # Display Results
-                st.markdown(response.text)
+                    ### 💡 Recommendations
+                    [Specific advice for the hiring manager or candidate]
+                    """
 
-        except Exception as e:
-            st.error(f"An error occurred during evaluation: {e}")
+                    response = client.models.generate_content(
+                        model="gemini-1.5-flash",
+                        contents=[cv_part, jd_part, prompt]
+                    )
+
+                    st.success("Evaluation Complete!")
+                    st.markdown("---")
+                    st.markdown(response.text)
+
+            except Exception as e:
+                st.error(f"An error occurred during evaluation: {e}")
