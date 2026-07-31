@@ -1,10 +1,31 @@
 import os
 import streamlit as st
+import streamlit.components.v1 as components
 from google import genai
 from google.genai import types
 
 # Set page layout
 st.set_page_config(page_title="AI CV & Job Matcher", page_icon="📄", layout="wide")
+
+# 2. Google Analytics Tracking Function
+def inject_google_analytics(measurement_id: str):
+    ga_code = f"""
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id={measurement_id}"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){{dataLayer.push(arguments);}}
+        gtag('js', new Date());
+        gtag('config', '{measurement_id}');
+    </script>
+    """
+    # Inject 0-pixel height component to load script invisibly
+    components.html(ga_code, height=0, width=0)
+
+
+# 3. Inject Analytics (Replace G-XXXXXXXXXX with your actual Measurement ID)
+GA_MEASUREMENT_ID = st.secrets.get("GA_MEASUREMENT_ID") or "G-XXXXXXXXXX"
+inject_google_analytics(GA_MEASUREMENT_ID)
 
 # Check if user is logged in
 if not st.experimental_user.is_logged_in if hasattr(st, "experimental_user") else False:
