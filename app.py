@@ -110,7 +110,7 @@ else:
                     """
 
                     response = client.models.generate_content(
-                        model="gemini-3.6-flash",
+                        model="gemini-2.0-flash",
                         contents=[cv_part, jd_part, prompt]
                     )
 
